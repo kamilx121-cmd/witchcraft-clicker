@@ -195,7 +195,7 @@
         let drillCost = 150.00; 
         let catProduction = 0.00; // Produkcja tylko kotów
 
-        let cauldronCost = 1000.00;
+        let cauldronCost = 500.00;
         let potProduction = 0.00; // Produkcja tylko kotłów
 
         const scoreDisplay = document.getElementById('score');
@@ -289,7 +289,7 @@
         drillBtn.addEventListener('click', () => {
             if (score >= drillCost) {
                 score -= drillCost;
-                catProduction += 0.05; // 0.1 co 2s
+                catProduction += 0.1; // 0.1 co 2s
                 drillCost *= 1.5;
                 updateUI();
                 saveGame();
