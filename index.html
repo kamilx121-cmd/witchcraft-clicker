@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Witchcraft Clicker 🌙</title>
+    <style>
+        body {
+            font-family: 'Georgia', serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background: radial-gradient(circle, #2e1a47 0%, #0c051a 100%);
+            color: #e0d1ff;
+            overflow: hidden;
+        }
+
+        /* Rozbudowany Panel Statystyk */
+        .dashboard {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 15px 25px;
+            border-radius: 50px;
+            border: 1px solid #5a189a;
+            box-shadow: 0 0 20px rgba(157, 78, 221, 0.2);
+            backdrop-filter: blur(5px);
+        }
+
+        .stat-item {
+            text-align: center;
+            font-size: 0.8rem;
+            color: #b392ac;
+        }
+
+        .stat-item div {
+            color: #ff9e00;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .divider { border-left: 1px solid #5a189a; height: 35px; align-self: center; }
+
+        .stats {
+            font-size: 3.2rem;
+            margin-bottom: 15px;
+            text-shadow: 0 0 20px #9d4edd;
+            color: #d4af37;
+        }
+
+        #click-btn {
+            width: 140px;
+            height: 140px;
+            font-size: 4rem;
+            cursor: pointer;
+            background: rgba(157, 78, 221, 0.1);
+            border: 3px solid #9d4edd;
+            border-radius: 50%;
+            transition: all 0.1s;
+            user-select: none;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            z-index: 10;
+        }
+
+        #click-btn:active { transform: scale(0.9); }
+
+        .shop {
+            padding: 20px;
+            background: rgba(20, 10, 35, 0.9);
+            border: 2px solid #5a189a;
+            border-radius: 20px;
+            text-align: center;
+            width: 360px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        }
+
+        h3 { margin-top: 0; color: #ff9e00; letter-spacing: 2px; }
+
+        .upgrade {
+            width: 100%;
+            padding: 10px;
+            font-size: 1rem;
+            cursor: pointer;
+            border: 1px solid #7b2cbf;
+            border-radius: 10px;
+            color: #f7dfff;
+            margin-top: 8px;
+            transition: 0.3s;
+            font-family: 'Georgia', serif;
+            font-weight: bold;
+        }
+
+        #upgrade-btn { background: linear-gradient(45deg, #5a189a, #7b2cbf); }
+        #drill-btn { background: linear-gradient(45deg, #3c096c, #5a189a); }
+        #cauldron-btn { background: linear-gradient(45deg, #1b4332, #2d6a4f); }
+        #save-btn { background: linear-gradient(45deg, #2d6a4f, #40916c); margin-top: 15px; border-color: #52b788; }
+
+        .upgrade:disabled {
+            background: #240046;
+            color: #5a189a;
+            opacity: 0.5;
+            cursor: not-allowed;
+            border-color: #240046;
+        }
+
+        .info { font-size: 0.8rem; color: #b392ac; margin-top: 4px; }
+        .info span { color: #ff9e00; font-weight: bold; }
+
+        .floating-text {
+            position: absolute;
+            color: #ff9e00;
+            font-weight: bold;
+            font-size: 1.6rem;
+            pointer-events: none;
+            animation: floatUp 0.8s ease-out forwards;
+            text-shadow: 0 0 10px rgba(255, 158, 0, 0.8);
+            z-index: 100;
+        }
+
+        @keyframes floatUp {
+            0% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-120px) scale(1.2); }
+        }
+
+        #reset-btn { margin-top: 10px; background: none; border: none; color: #5a189a; cursor: pointer; text-decoration: underline; font-size: 0.7rem; }
+        
+        #save-toast {
+            position: fixed;
+            bottom: 20px;
+            background: rgba(64, 145, 108, 0.9);
+            color: white;
+            padding: 10px 25px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            opacity: 0;
+            transition: opacity 0.5s, transform 0.5s;
+            transform: translateY(20px);
+            pointer-events: none;
+            border: 1px solid #52b788;
+        }
+
+        .toast-show { opacity: 1 !important; transform: translateY(0) !important; }
+        hr { border: 0; border-top: 1px solid #5a189a; margin: 15px 0; }
+    </style>
+</head>
+<body>
+
+    <div class="dashboard">
+        <div class="stat-item">Kliknięcie<div id="ui-click-power">1.00</div></div>
+        <div class="divider"></div>
+        <div class="stat-item">Chowańce<div id="ui-cat-power">0.00 /s</div></div>
+        <div class="divider"></div>
+        <div class="stat-item">Kocioł<div id="ui-pot-power">0.00 /s</div></div>
+    </div>
+
+    <div class="stats">✨ <span id="score">0.00</span> Mana</div>
+
+    <div id="click-btn">🔮</div>
+
+    <div class="shop">
+        <h3>Grymuar Mocy</h3>
+        
+        <button id="upgrade-btn" class="upgrade">Wzmocnij Rytuał 📜</button>
+        <div class="info">Ofiara: <span id="upgrade-cost">10.00</span> Mana</div>
+
+        <hr>
+
+        <button id="drill-btn" class="upgrade">Przywołaj Chowańca 🐈‍⬛</button>
+        <div class="info">Ofiara: <span id="drill-cost">150.00</span> Mana<br>Aura: +0.05 /s (0.1 co 2s)</div>
+
+        <hr>
+
+        <button id="cauldron-btn" class="upgrade">Rozpal Kocioł 🧪</button>
+        <div class="info">Ofiara: <span id="cauldron-cost">1000.00</span> Mana<br>Warzenie: +0.20 /s (1.0 co 5s)</div>
+
+        <button id="save-btn" class="upgrade">Zapisz Rytuał 💾</button>
+    </div>
+
+    <button id="reset-btn">Zresetuj postępy (Reset)</button>
+    <div id="save-toast">Pamięć Grymuaru odświeżona... ✨</div>
+
+    <script>
+        let score = 0;
+        let clickValue = 1.00;
+        let upgradeCost = 10.00;
+        
+        let drillCost = 150.00; 
+        let catProduction = 0.00; // Produkcja tylko kotów
+
+        let cauldronCost = 1000.00;
+        let potProduction = 0.00; // Produkcja tylko kotłów
+
+        const scoreDisplay = document.getElementById('score');
+        const uiClickPower = document.getElementById('ui-click-power');
+        const uiCatPower = document.getElementById('ui-cat-power');
+        const uiPotPower = document.getElementById('ui-pot-power');
+        
+        const upgradeCostDisplay = document.getElementById('upgrade-cost');
+        const drillCostDisplay = document.getElementById('drill-cost');
+        const cauldronCostDisplay = document.getElementById('cauldron-cost');
+
+        const clickBtn = document.getElementById('click-btn');
+        const upgradeBtn = document.getElementById('upgrade-btn');
+        const drillBtn = document.getElementById('drill-btn');
+        const cauldronBtn = document.getElementById('cauldron-btn');
+        const saveBtn = document.getElementById('save-btn');
+        const saveToast = document.getElementById('save-toast');
+
+        function saveGame(isAuto = false) {
+            const gameState = {
+                score: score,
+                clickValue: clickValue,
+                upgradeCost: upgradeCost,
+                drillCost: drillCost,
+                catProduction: catProduction,
+                cauldronCost: cauldronCost,
+                potProduction: potProduction
+            };
+            localStorage.setItem('witchcraft_save_v3', JSON.stringify(gameState));
+            saveToast.innerText = isAuto ? "Automatyczny zapis... 🌙" : "Rytuał utrwalony... ✨";
+            saveToast.classList.add('toast-show');
+            setTimeout(() => { saveToast.classList.remove('toast-show'); }, 2000);
+        }
+
+        function loadGame() {
+            const savedData = localStorage.getItem('witchcraft_save_v3');
+            if (savedData) {
+                const data = JSON.parse(savedData);
+                score = data.score || 0;
+                clickValue = data.clickValue || 1.00;
+                upgradeCost = data.upgradeCost || 10.00;
+                drillCost = data.drillCost || 150.00;
+                catProduction = data.catProduction || 0.00;
+                cauldronCost = data.cauldronCost || 1000.00;
+                potProduction = data.potProduction || 0.00;
+            }
+        }
+
+        function updateUI() {
+            scoreDisplay.innerText = score.toFixed(2);
+            uiClickPower.innerText = clickValue.toFixed(2);
+            uiCatPower.innerText = catProduction.toFixed(2) + " /s";
+            uiPotPower.innerText = potProduction.toFixed(2) + " /s";
+            
+            upgradeCostDisplay.innerText = upgradeCost.toFixed(2);
+            drillCostDisplay.innerText = drillCost.toFixed(2);
+            cauldronCostDisplay.innerText = cauldronCost.toFixed(2);
+
+            upgradeBtn.disabled = score < upgradeCost;
+            drillBtn.disabled = score < drillCost;
+            cauldronBtn.disabled = score < cauldronCost;
+        }
+
+        function spawnFloatingText() {
+            const text = document.createElement('div');
+            text.innerText = "+" + clickValue.toFixed(2);
+            text.className = 'floating-text';
+            const btnRect = clickBtn.getBoundingClientRect();
+            text.style.left = (btnRect.left + btnRect.width / 2 + (Math.random() * 60 - 30)) + 'px';
+            text.style.top = btnRect.top + 'px';
+            document.body.appendChild(text);
+            setTimeout(() => text.remove(), 800);
+        }
+
+        clickBtn.addEventListener('click', () => {
+            score += clickValue;
+            spawnFloatingText();
+            updateUI();
+        });
+
+        upgradeBtn.addEventListener('click', () => {
+            if (score >= upgradeCost) {
+                score -= upgradeCost;
+                clickValue += 0.50;
+                upgradeCost *= 1.6;
+                updateUI();
+                saveGame();
+            }
+        });
+
+        drillBtn.addEventListener('click', () => {
+            if (score >= drillCost) {
+                score -= drillCost;
+                catProduction += 0.05; // 0.1 co 2s
+                drillCost *= 1.5;
+                updateUI();
+                saveGame();
+            }
+        });
+
+        cauldronBtn.addEventListener('click', () => {
+            if (score >= cauldronCost) {
+                score -= cauldronCost;
+                potProduction += 0.20; // 1.0 co 5s
+                cauldronCost *= 1.8;
+                updateUI();
+                saveGame();
+            }
+        });
+
+        saveBtn.addEventListener('click', () => saveGame(false));
+
+        document.getElementById('reset-btn').addEventListener('click', () => {
+            if (confirm("Zresetować postępy?")) {
+                localStorage.removeItem('witchcraft_save_v3');
+                location.reload();
+            }
+        });
+
+        setInterval(() => {
+            let totalIdle = catProduction + potProduction;
+            if (totalIdle > 0) {
+                score += (totalIdle / 10);
+                updateUI();
+            }
+        }, 100);
+
+        setInterval(() => { saveGame(true); }, 30000);
+
+        loadGame();
+        updateUI();
+    </script>
+</body>
+</html>
