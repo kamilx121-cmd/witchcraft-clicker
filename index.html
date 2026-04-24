@@ -276,6 +276,59 @@
         }, 100);
 
         updateUI();
+
+        // Funkcja zapisu
+function saveGame(isAuto = false) {
+    const gameState = {
+        score: score,
+        clickValue: clickValue,
+        upgradeCost: upgradeCost,
+        drillCost: drillCost,
+        catProduction: catProduction,
+        cauldronCost: cauldronCost,
+        potProduction: potProduction
+    };
+    localStorage.setItem('witchcraft_save_v5', JSON.stringify(gameState));
+    
+    // Pokazywanie powiadomienia (Toast)
+    saveToast.innerText = isAuto ? "Automatyczny zapis... 🌙" : "Pamięć Grymuaru odświeżona... ✨";
+    saveToast.classList.add('toast-show');
+    setTimeout(() => saveToast.classList.remove('toast-show'), 3000);
+}
+
+// Funkcja wczytywania
+function loadGame() {
+    const savedData = localStorage.getItem('witchcraft_save_v5');
+    if (savedData) {
+        const data = JSON.parse(savedData);
+        score = data.score || 0;
+        clickValue = data.clickValue || 1.00;
+        upgradeCost = data.upgradeCost || 10.00;
+        drillCost = data.drillCost || 150.00;
+        catProduction = data.catProduction || 0.00;
+        cauldronCost = data.cauldronCost || 500.00;
+        potProduction = data.potProduction || 0.00;
+        updateUI();
+    }
+}
+
+// Funkcja resetu
+document.getElementById('reset-btn').addEventListener('click', () => {
+    if(confirm("Czy na pewno chcesz porzucić swoje moce i zacząć od nowa?")) {
+        localStorage.removeItem('witchcraft_save_v5');
+        location.reload();
+    }
+});
+// Obsługa przycisku zapisu
+saveBtn.addEventListener('click', () => saveGame(false));
+
+// Autosave co 30 sekund
+setInterval(() => {
+    saveGame(true);
+}, 30000);
+
+// Wczytaj grę przy starcie
+loadGame();
     </script>
 </body>
 </html>
