@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Witchcraft Clicker 🌙</title>
+    <title>Witchcraft Clicker 🌙 Sabat Edition</title>
     <style>
         body {
             font-family: 'Georgia', serif;
@@ -16,8 +16,40 @@
             color: #e0d1ff;
             padding: 20px;
             overflow-y: auto;
-            /* Dodane dla poprawnego pozycjonowania liczb */
             overflow-x: hidden; 
+        }
+
+        /* Styl panelu audio z suwakiem */
+        .audio-panel {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(30, 10, 50, 0.8);
+            padding: 10px 15px;
+            border-radius: 30px;
+            border: 1px solid #5a189a;
+            backdrop-filter: blur(5px);
+        }
+
+        #mute-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.2rem;
+            color: #ff9e00;
+            display: flex;
+            align-items: center;
+            padding: 0;
+        }
+
+        #volume-slider {
+            cursor: pointer;
+            accent-color: #ff9e00;
+            width: 80px;
         }
 
         .dashboard {
@@ -95,6 +127,7 @@
 
         .btn-basic { background: linear-gradient(45deg, #5a189a, #7b2cbf); }
         .btn-artifact { background: linear-gradient(45deg, #7209b7, #b517ad); }
+        .btn-sabat { background: linear-gradient(45deg, #9d4edd, #ff9e00); color: #000; }
         
         .upgrade-btn:disabled { background: #222 !important; color: #555 !important; cursor: not-allowed; }
 
@@ -104,7 +137,6 @@
         #save-btn { background: #2d6a4f; margin-top: 20px; width: 100%; max-width: 400px; }
         #reset-btn { background: none; border: none; color: #5a189a; text-decoration: underline; cursor: pointer; margin-top: 15px; }
 
-        /* Toast dla zapisu */
         #save-toast {
             position: fixed;
             bottom: 20px;
@@ -121,7 +153,6 @@
         }
         .show-toast { opacity: 1 !important; transform: translateY(-10px); }
 
-        /* NOWE: Style dla wyskakujących liczb */
         .floating-number {
             position: absolute;
             pointer-events: none;
@@ -141,6 +172,15 @@
 </head>
 <body>
 
+    <div class="audio-panel">
+        <button id="mute-btn">🔊</button>
+        <input type="range" id="volume-slider" min="0" max="1" step="0.01" value="0.5">
+    </div>
+
+    <audio id="bg-music" loop>
+        <source src="muzyka.mp3" type="audio/mpeg">
+    </audio>
+
     <div class="dashboard">
         <div class="stat-item">Kliknięcie<div id="ui-click">1.00</div></div>
         <div class="divider"></div>
@@ -154,6 +194,26 @@
     <button id="click-btn"></button>
 
     <div class="shop-container">
+        <button class="accordion" style="border-color: #ff9e00; color: #ff9e00;">Sabat Czarownic 🦇 <span>+</span></button>
+        <div class="panel">
+            <div style="text-align:center; padding: 10px; color: #ff9e00;">Moc Duszy: <b id="ui-soul-power">0</b></div>
+            <div class="upgrade-item">
+                <button id="btn-talent-wisdom" class="upgrade-btn btn-sabat">Mroczna Wiedza</button>
+                <div class="info">Koszt: <b>1</b> Moc Duszy | +20% do produkcji (APS)</div>
+                <div class="info">Poziom: <b id="lvl-wisdom">0</b></div>
+            </div>
+            <div class="upgrade-item">
+                <button id="btn-talent-blood" class="upgrade-btn btn-sabat">Krwawy Pakt</button>
+                <div class="info">Koszt: <b>1</b> Moc Duszy | +20% do siły kliknięcia</div>
+                <div class="info">Poziom: <b id="lvl-blood">0</b></div>
+            </div>
+            <div class="upgrade-item">
+                <button id="btn-prestige" class="upgrade-btn" style="background: #3c096c;">Odpraw Sabat (Reset)</button>
+                <div class="info" style="color: #ff9e00;">Zyskasz: <b id="pending-power">0</b> Mocy Duszy</div>
+                <div class="info">Wymaga min. 1 mln punktów</div>
+            </div>
+        </div>
+
         <button class="accordion">Grymuar Mocy 📜 <span>+</span></button>
         <div class="panel">
             <div class="upgrade-item">
@@ -207,7 +267,12 @@
     <script>
         let game = {
             score: 0,
-            lv: { click: 0, cat: 0, pot: 0, garden: 0, ball: 0, moon: 0, star: 0, ritual: 0, altar: 0 }
+            soulPower: 0,
+            lv: { click: 0, cat: 0, pot: 0, garden: 0, ball: 0, moon: 0, star: 0, ritual: 0, altar: 0 },
+            talents: { wisdom: 0, blood: 0 },
+            isMuted: false,
+            volume: 0.5,
+            oldVolume: 0.5
         };
 
         const cfg = {
@@ -222,12 +287,50 @@
             altar:  { base: 25000, exp: 2.0, pow: 1.50, val: 25.0 }
         };
 
+        const music = document.getElementById('bg-music');
+        const muteBtn = document.getElementById('mute-btn');
+        const volumeSlider = document.getElementById('volume-slider');
+
+        // Obsługa głośności i suwaka
+        volumeSlider.oninput = (e) => {
+            let val = e.target.value;
+            music.volume = val;
+            game.volume = val;
+            updateAudioUI();
+        };
+
+        muteBtn.onclick = () => {
+            if (music.volume > 0) {
+                game.oldVolume = music.volume;
+                game.volume = 0;
+            } else {
+                game.volume = game.oldVolume || 0.5;
+            }
+            music.volume = game.volume;
+            updateAudioUI();
+        };
+
+        function updateAudioUI() {
+            volumeSlider.value = game.volume;
+            music.muted = (game.volume == 0);
+            muteBtn.innerText = (game.volume == 0) ? "🔇" : "🔊";
+            game.isMuted = (game.volume == 0);
+        }
+
+        window.addEventListener('click', () => {
+            if (music.paused && game.volume > 0) {
+                music.play().catch(e => console.log("Interakcja wymagana..."));
+            }
+        }, { once: true });
+
         function getMoonMulti() { return 1.0 + (game.lv.moon * 0.72); }
+        function getSabatClickMulti() { return 1 + (game.talents.blood * 0.20); }
+        function getSabatAPSMulti() { return 1 + (game.talents.wisdom * 0.20); }
 
         function getClickPower() {
             let base = Math.pow(cfg.click.pow, game.lv.click);
             let ritual = Math.pow(cfg.ritual.pow, game.lv.ritual);
-            return base * ritual * getMoonMulti();
+            return base * ritual * getMoonMulti() * getSabatClickMulti();
         }
 
         function getAPS() {
@@ -237,7 +340,12 @@
             let ball = game.lv.ball === 0 ? 0 : cfg.ball.val * ((Math.pow(cfg.ball.pow, game.lv.ball)-1)/(cfg.ball.pow-1));
             let altar = game.lv.altar === 0 ? 0 : cfg.altar.val * ((Math.pow(cfg.altar.pow, game.lv.altar)-1)/(cfg.altar.pow-1));
             let star = game.lv.star === 0 ? 0 : 1.0 * Math.pow(cfg.star.pow, game.lv.star - 1);
-            return (cat + pot + garden + ball + altar + star) * getMoonMulti();
+            return (cat + pot + garden + ball + altar + star) * getMoonMulti() * getSabatAPSMulti();
+        }
+
+        function calculatePendingPower() {
+            if (game.score < 1000000) return 0;
+            return Math.floor(Math.sqrt(game.score / 1000000));
         }
 
         function updateUI() {
@@ -245,6 +353,14 @@
             document.getElementById('ui-click').innerText = getClickPower().toFixed(2);
             document.getElementById('ui-aps').innerText = getAPS().toFixed(2) + " /s";
             document.getElementById('ui-multi').innerText = "x" + getMoonMulti().toFixed(1);
+            
+            document.getElementById('ui-soul-power').innerText = game.soulPower;
+            document.getElementById('pending-power').innerText = calculatePendingPower();
+            document.getElementById('lvl-wisdom').innerText = game.talents.wisdom;
+            document.getElementById('lvl-blood').innerText = game.talents.blood;
+            document.getElementById('btn-talent-wisdom').disabled = game.soulPower < 1;
+            document.getElementById('btn-talent-blood').disabled = game.soulPower < 1;
+            document.getElementById('btn-prestige').disabled = game.score < 1000000;
 
             const keys = Object.keys(cfg);
             keys.forEach(key => {
@@ -256,31 +372,23 @@
                 if(key === 'ritual') document.getElementById('val-ritual').innerText = "x" + Math.pow(cfg.ritual.pow, game.lv.ritual).toFixed(1) + " klik";
                 if(key === 'star') document.getElementById('val-star').innerText = (game.lv.star === 0 ? 1.00 : Math.pow(cfg.star.pow, game.lv.star - 1)).toFixed(2) + "/s";
             });
+            updateAudioUI();
         }
 
-        // NOWE: Funkcja tworząca animowaną liczbę
         function createFloatingNumber(x, y, value) {
             const num = document.createElement('div');
             num.className = 'floating-number';
             num.innerText = "+" + value.toFixed(2);
             num.style.left = x + 'px';
             num.style.top = y + 'px';
-            
             document.body.appendChild(num);
-            
-            // Usunięcie elementu po zakończeniu animacji
-            setTimeout(() => {
-                num.remove();
-            }, 800);
+            setTimeout(() => num.remove(), 800);
         }
 
         document.getElementById('click-btn').onclick = (e) => {
             let power = getClickPower();
             game.score += power;
-            
-            // Wywołanie animacji liczby w miejscu kliknięcia
             createFloatingNumber(e.pageX, e.pageY, power);
-            
             updateUI();
         };
 
@@ -293,6 +401,29 @@
             }
         }
 
+        function buyTalent(name) {
+            if (game.soulPower >= 1) {
+                game.soulPower -= 1;
+                game.talents[name]++;
+                updateUI();
+            }
+        }
+
+        document.getElementById('btn-prestige').onclick = () => {
+            let gain = calculatePendingPower();
+            if (gain >= 1) {
+                if (confirm(`Czy chcesz odprawić Sabat? Zresetujesz postępy, ale otrzymasz ${gain} Mocy Duszy.`)) {
+                    game.soulPower += gain;
+                    game.score = 0;
+                    Object.keys(game.lv).forEach(k => game.lv[k] = 0);
+                    saveGame();
+                    updateUI();
+                }
+            }
+        };
+
+        document.getElementById('btn-talent-wisdom').onclick = () => buyTalent('wisdom');
+        document.getElementById('btn-talent-blood').onclick = () => buyTalent('blood');
         document.getElementById('btn-click').onclick = () => buy('click');
         document.getElementById('btn-cat').onclick = () => buy('cat');
         document.getElementById('btn-pot').onclick = () => buy('pot');
@@ -324,33 +455,26 @@
         }, 100);
 
         function saveGame(isAuto = false) {
-            localStorage.setItem('witch_v11', JSON.stringify(game));
-            
+            localStorage.setItem('witch_v14', JSON.stringify(game));
             const toast = document.getElementById('save-toast');
-            if(isAuto) toast.innerText = "Automatyczny zapis rytuału... 🌕";
-            else toast.innerText = "Grymuar zapamiętał Twoje postępy... ✨";
-            
+            toast.innerText = isAuto ? "Automatyczny zapis rytuału... 🌕" : "Grymuar zapamiętał Twoje postępy... ✨";
             toast.classList.add('show-toast');
             setTimeout(() => toast.classList.remove('show-toast'), 3000);
         }
 
         document.getElementById('save-btn').onclick = () => saveGame(false);
-
         setInterval(() => saveGame(true), 30000);
 
-        const saved = localStorage.getItem('witch_v11');
+        const saved = localStorage.getItem('witch_v14') || localStorage.getItem('witch_v13');
         if (saved) {
             let loadedGame = JSON.parse(saved);
-            // Naprawa dla nowych ulepszeń, jeśli wczytujemy stary zapis
-            Object.keys(game.lv).forEach(key => {
-                if(loadedGame.lv[key] === undefined) loadedGame.lv[key] = 0;
-            });
-            game = loadedGame;
+            game = Object.assign(game, loadedGame);
+            music.volume = game.volume;
             updateUI();
         }
 
         document.getElementById('reset-btn').onclick = () => {
-            if(confirm("Zresetować postępy?")) {
+            if(confirm("Zresetować wszystko?")) {
                 localStorage.clear();
                 location.reload();
             }
